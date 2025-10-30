@@ -1,0 +1,19 @@
+# Rust
+/target/
+**/*.rlib
+**/*.rmeta
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Ruby / Bundler
+vendor/
+.bundle/
+*.gem
+test_gem_*

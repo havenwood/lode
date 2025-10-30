@@ -1,0 +1,11 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rack (3.2.3)
+    rackup (2.2.1)
+
+PLATFORMS
+  arm64-darwin25.0.0
+
+BUNDLED WITH
+   0.1.0
