@@ -1,8 +1,8 @@
 //! Download and parse the complete `RubyGems` index (specs.4.8.gz).
 
+use alox_48::{Value, from_bytes};
 use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
-use marshal_rs::{Value, load};
 use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -97,8 +97,8 @@ impl FullIndex {
     ///
     /// Returns an error if Marshal parsing fails or data format is invalid
     pub fn parse(marshal_data: &[u8]) -> Result<Self> {
-        // Parse Marshal format using marshal-rs
-        let value = load(marshal_data, None).context("Failed to parse Marshal data")?;
+        // Parse Marshal format using alox-48
+        let value: Value = from_bytes(marshal_data).context("Failed to parse Marshal data")?;
 
         // Extract array of specs
         let array = value
@@ -148,25 +148,30 @@ impl FullIndex {
     /// Extract string from Marshal Value
     fn extract_string(value: &Value, field_name: &str) -> Result<String> {
         // Try direct string first
-        if let Some(s) = value.as_str() {
-            return Ok(s.to_string());
+        if let Some(rb_string) = value.as_string() {
+            return String::from_utf8(rb_string.data.clone())
+                .with_context(|| format!("Invalid UTF-8 in {field_name}"));
         }
 
         // Try as array (for Gem::Version objects which contain [version_string])
-        if let Some(s) = value
-            .as_array()
-            .and_then(|arr| arr.first())
-            .and_then(|first| first.as_str())
+        if let Some(arr) = value.as_array()
+            && let Some(first) = arr.first()
+            && let Some(rb_string) = first.as_string()
         {
-            return Ok(s.to_string());
+            return String::from_utf8(rb_string.data.clone())
+                .with_context(|| format!("Invalid UTF-8 in {field_name}"));
         }
 
         // Try as object (for other wrapped values)
         if let Some(obj) = value.as_object() {
             // Try common field names
             for key in &["__value", "version", "@version", "v", "@v"] {
-                if let Some(s) = obj.get(*key).and_then(|field| field.as_str()) {
-                    return Ok(s.to_string());
+                let symbol = alox_48::Symbol::from(key.to_string());
+                if let Some(field) = obj.fields.get(&symbol)
+                    && let Some(rb_string) = field.as_string()
+                {
+                    return String::from_utf8(rb_string.data.clone())
+                        .with_context(|| format!("Invalid UTF-8 in {field_name}"));
                 }
             }
         }
@@ -309,10 +314,10 @@ mod tests {
     }
 
     // NOTE: Regression tests for extract_string() are difficult to write because
-    // marshal_rs::Value doesn't have a simple constructor. The function is tested
+    // alox_48::Value requires proper Marshal serialization. The function is tested
     // indirectly through the integration with real Marshal data from RubyGems.org.
     // Key behavior tested in production:
     // - Direct strings (gem names)
     // - Arrays with string first element (Gem::Version objects like ["1.0.0"])
-    // - Objects with __value field (older marshal format)
+    // - Objects with field access (older marshal format)
 }

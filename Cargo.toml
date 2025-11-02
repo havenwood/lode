@@ -41,7 +41,7 @@ tar = "0.4"
 flate2 = "1.0"
 
 # Ruby Marshal format parsing (for full gem index)
-marshal-rs = "1.1"
+alox-48 = "0.6"
 
 # Git operations (for git gem support)
 git2 = "0.20"

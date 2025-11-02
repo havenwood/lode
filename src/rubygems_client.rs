@@ -526,7 +526,7 @@ impl RubyGemsClient {
             .context("Failed to decompress bulk gem index")?;
 
         // Parse Marshal data
-        let marshal_value = marshal_rs::load(&decompressed, None)
+        let marshal_value = alox_48::from_bytes(&decompressed)
             .map_err(|e| anyhow::anyhow!("Failed to parse Marshal data: {e}"))?;
 
         // Convert Marshal array to Vec<BulkGemSpec>
@@ -546,7 +546,7 @@ impl RubyGemsClient {
     ///
     /// The Marshal data is an array of [name, version, platform] tuples.
     /// Example: `[["rails", "7.0.8", "ruby"], ["rack", "3.0.0", "ruby"], ...]`
-    fn parse_marshal_specs(value: &marshal_rs::Value) -> Result<Vec<BulkGemSpec>> {
+    fn parse_marshal_specs(value: &alox_48::Value) -> Result<Vec<BulkGemSpec>> {
         // The top level should be an array
         let specs_array = value
             .as_array()
@@ -565,7 +565,13 @@ impl RubyGemsClient {
             }
 
             // Extract name (String)
-            let Some(name) = spec_parts.first().and_then(|v| v.as_str()) else {
+            let Some(name) = spec_parts
+                .first()
+                .and_then(|v| v.as_string())
+                .map(|rb_str| String::from_utf8(rb_str.data.clone()))
+                .transpose()
+                .context("Invalid UTF-8 in gem name")?
+            else {
                 continue;
             };
 
@@ -574,22 +580,36 @@ impl RubyGemsClient {
                 continue;
             };
 
-            let version = if let Some(v) = version_value.as_str() {
-                v.to_string()
+            let version = if let Some(rb_str) = version_value.as_string() {
+                String::from_utf8(rb_str.data.clone()).context("Invalid UTF-8 in version field")?
             } else if let Some(arr) = version_value.as_array() {
                 // Gem::Version is represented as an array with version string as first element
-                arr.first()
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("0.0.0")
-                    .to_string()
+                let Some(version_str) = arr
+                    .first()
+                    .and_then(|v| v.as_string())
+                    .map(|rb_str| String::from_utf8(rb_str.data.clone()))
+                    .transpose()
+                    .context("Invalid UTF-8 in version array")?
+                else {
+                    continue;
+                };
+                version_str
             } else if let Some(obj) = version_value.as_object() {
                 // Try common field names for version objects
-                obj.get("__value")
-                    .or_else(|| obj.get("@version"))
-                    .or_else(|| obj.get("version"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("0.0.0")
-                    .to_string()
+                let keys = ["__value", "@version", "version"];
+                let Some(version_str) = keys
+                    .iter()
+                    .find_map(|&key| {
+                        let symbol = alox_48::Symbol::from(key.to_string());
+                        obj.fields.get(&symbol).and_then(|v| v.as_string())
+                    })
+                    .map(|rb_str| String::from_utf8(rb_str.data.clone()))
+                    .transpose()
+                    .context("Invalid UTF-8 in version object")?
+                else {
+                    continue;
+                };
+                version_str
             } else {
                 continue;
             };
@@ -597,12 +617,14 @@ impl RubyGemsClient {
             // Extract platform (String)
             let platform = spec_parts
                 .get(2)
-                .and_then(|v| v.as_str())
-                .unwrap_or("ruby")
-                .to_string();
+                .and_then(|v| v.as_string())
+                .map(|rb_str| String::from_utf8(rb_str.data.clone()))
+                .transpose()
+                .context("Invalid UTF-8 in platform field")?
+                .unwrap_or_else(|| "ruby".to_string());
 
             result.push(BulkGemSpec {
-                name: name.to_string(),
+                name,
                 version,
                 platform,
             });
@@ -882,5 +904,28 @@ mod tests {
         };
         assert_eq!(stats.entries, 0);
         assert!(stats.gems_cached.is_empty());
+    }
+
+    #[test]
+    fn test_invalid_utf8_in_marshal_raises_error() {
+        // Marshal array: [["rails", <invalid-utf8>, "ruby"]]
+        let marshal_bytes = vec![
+            0x04, 0x08, // Marshal version 4.8
+            0x5b, 0x06, // Array with 1 element
+            0x5b, 0x08, // Nested array with 3 elements
+            0x22, 0x0a, b'r', b'a', b'i', b'l', b's', // "rails"
+            0x22, 0x09, b'1', b'.', 0xFF, 0xFE, // Invalid UTF-8
+            0x22, 0x09, b'r', b'u', b'b', b'y', // "ruby"
+        ];
+
+        if let Ok(value) = alox_48::from_bytes(&marshal_bytes) {
+            let parse_result = RubyGemsClient::parse_marshal_specs(&value);
+            assert!(parse_result.is_err(), "Expected error for invalid UTF-8");
+            let err_msg = format!("{:?}", parse_result.unwrap_err());
+            assert!(
+                err_msg.contains("Invalid UTF-8"),
+                "Error should mention UTF-8"
+            );
+        }
     }
 }
