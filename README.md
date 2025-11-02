@@ -103,15 +103,8 @@ Options:
 
 ## Installation
 
-Manually clone and `cargo build --release` for now, then put the binary somewhere in your `$PATH`.
-Binary releases coming soon.
-
 ```bash
-git clone https://github.com/havenwood/lode.git
-cd lode
-cargo build --release
-./target/release/lode --version
-#>> lode 0.1.0
+cargo install lode
 ```
 
 ## Environment Variables
