@@ -2,13 +2,11 @@
 //!
 //! Tests gem commands for administration, authentication, and server operations:
 //! - gem-sources: Manage gem sources
-//! - gem-server: Run local gem server
 //! - gem-push: Upload gems to `RubyGems`
 //! - gem-yank: Remove gems from `RubyGems`
 //! - gem-signin: Authenticate with `RubyGems`
 //! - gem-signout: Logout from `RubyGems`
 //! - gem-cert: Manage gem signing certificates
-//! - gem-mirror: Mirror gem repositories
 //! - gem-rdoc: Generate `RDoc` documentation
 //! - gem-help: Show help for gem commands
 
@@ -79,70 +77,6 @@ fn gem_sources_update_flag() {
     assert!(
         !stderr.contains("unexpected argument"),
         "gem-sources should accept --update flag. stderr: {stderr}"
-    );
-}
-
-// ============================================================================
-// gem-server Tests - Run local gem server
-// ============================================================================
-
-/// Test gem-server accepts port flag
-#[test]
-fn gem_server_port_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-server", "--port", "8808"])
-        .output()
-        .expect("Failed to execute lode gem-server --port");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-server should accept --port flag. stderr: {stderr}"
-    );
-}
-
-/// Test gem-server --bind flag
-#[test]
-fn gem_server_bind_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-server", "--bind", "localhost"])
-        .output()
-        .expect("Failed to execute lode gem-server --bind");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-server should accept --bind flag. stderr: {stderr}"
-    );
-}
-
-/// Test gem-server --dir flag
-#[test]
-fn gem_server_dir_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-server", "--dir", "/tmp"])
-        .output()
-        .expect("Failed to execute lode gem-server --dir");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-server should accept --dir flag. stderr: {stderr}"
-    );
-}
-
-/// Test gem-server --daemon flag
-#[test]
-fn gem_server_daemon_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-server", "--daemon"])
-        .output()
-        .expect("Failed to execute lode gem-server --daemon");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-server should accept --daemon flag. stderr: {stderr}"
     );
 }
 
@@ -409,55 +343,6 @@ fn gem_cert_sign_flag() {
     assert!(
         !stderr.contains("unexpected argument"),
         "gem-cert should accept --sign flag. stderr: {stderr}"
-    );
-}
-
-// ============================================================================
-// gem-mirror Tests - Mirror gem repositories
-// ============================================================================
-
-/// Test gem-mirror --list flag
-#[test]
-fn gem_mirror_list_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-mirror", "--list"])
-        .output()
-        .expect("Failed to execute lode gem-mirror --list");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-mirror should accept --list flag. stderr: {stderr}"
-    );
-}
-
-/// Test gem-mirror --add flag
-#[test]
-fn gem_mirror_add_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-mirror", "--add", "https://example.com"])
-        .output()
-        .expect("Failed to execute lode gem-mirror --add");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-mirror should accept --add flag. stderr: {stderr}"
-    );
-}
-
-/// Test gem-mirror --remove flag
-#[test]
-fn gem_mirror_remove_flag() {
-    let output = Command::new(get_lode_binary())
-        .args(["gem-mirror", "--remove", "https://example.com"])
-        .output()
-        .expect("Failed to execute lode gem-mirror --remove");
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !stderr.contains("unexpected argument"),
-        "gem-mirror should accept --remove flag. stderr: {stderr}"
     );
 }
 

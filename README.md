@@ -2,8 +2,8 @@
 
 > **A Ruby package manager written in Rust.** All Bundler commands, all RubyGems commands, one fast tool.
 
-[![Bundler](https://img.shields.io/badge/bundler-30%20commands-purple)](https://github.com/havenwood/lode)
-[![RubyGems](https://img.shields.io/badge/rubygems-27%20commands-orange)](https://github.com/havenwood/lode)
+[![Bundler](https://img.shields.io/badge/bundler-28%20commands-purple)](https://github.com/havenwood/lode)
+[![RubyGems](https://img.shields.io/badge/rubygems-25%20commands-orange)](https://github.com/havenwood/lode)
 
 Lode targets Bundler 4 & RubyGems 4 APIs.
 
@@ -92,8 +92,6 @@ Commands:
   gem-sources     Manage gem sources
   gem-cert        Manage gem certificates
   gem-rdoc        Build `RDoc` for installed gems
-  gem-server      Serve gems from a gem server
-  gem-mirror      Mirror gem repositories
   gem-environment Display `RubyGems` environment information
   gem-help        Show help for gem commands
   help            Print this message or the help of the given subcommand(s)
@@ -115,15 +113,6 @@ cargo build --release
 ./target/release/lode --version
 #>> lode 0.1.0
 ```
-
-### Deprecated RubyGems Commands
-
-Some RubyGems commands have been deprecated/moved in modern versions:
-
-- **`gem server`** - Moved to separate `rubygems-server` gem. Lode implements full HTTP server with Marshal API support.
-- **`gem mirror`** - Moved to separate `rubygems-mirror` gem. Lode implements basic mirror management.
-
-We might consider removing deprecated commands or separating them out to another tool like RubyGems has.
 
 ## Environment Variables
 

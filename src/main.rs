@@ -2694,91 +2694,6 @@ enum Commands {
         norc: bool,
     },
 
-    /// Serve gems from a gem server
-    #[command(name = "gem-server")]
-    GemServer {
-        /// Port to listen on
-        #[arg(short = 'p', long, default_value = "8808")]
-        port: u16,
-
-        /// Gem directory to serve (auto-detected if not specified)
-        #[arg(short = 'd', long)]
-        dir: Option<String>,
-
-        /// Auto-launch web browser
-        #[arg(short = 'l', long)]
-        launch: bool,
-
-        /// Host or IP address to bind to
-        #[arg(short = 'b', long, default_value = "0.0.0.0")]
-        bind: String,
-
-        /// Run server as a daemon in background
-        #[arg(long)]
-        daemon: bool,
-
-        /// Set the verbose level of output
-        #[arg(short = 'V', long)]
-        verbose: bool,
-
-        /// Silence command progress meter
-        #[arg(short = 'q', long)]
-        quiet: bool,
-
-        /// Silence `RubyGems` output
-        #[arg(long)]
-        silent: bool,
-    },
-
-    /// Mirror gem repositories
-    #[command(name = "gem-mirror")]
-    GemMirror {
-        /// Add a mirror URL
-        #[arg(long)]
-        add: Option<String>,
-
-        /// Remove a mirror URL
-        #[arg(long)]
-        remove: Option<String>,
-
-        /// List configured mirrors
-        #[arg(long)]
-        list: bool,
-
-        /// Clear all mirrors
-        #[arg(long)]
-        clear: bool,
-
-        // Common flags
-        /// Set the verbose level of output
-        #[arg(short = 'V', long)]
-        verbose: bool,
-
-        /// Silence command progress meter
-        #[arg(short = 'q', long, conflicts_with = "verbose")]
-        quiet: bool,
-
-        /// Silence `RubyGems` output
-        #[arg(long, conflicts_with_all = ["verbose", "quiet"])]
-        silent: bool,
-
-        /// Config file path (overrides default)
-        #[arg(long = "config-file")]
-        config_file: Option<String>,
-
-        /// Show stack backtrace on errors
-        #[arg(long)]
-        backtrace: bool,
-
-        /// Turn on Ruby debugging
-        #[arg(long)]
-        debug: bool,
-
-        /// Avoid loading any .gemrc file
-        #[arg(long)]
-        norc: bool,
-    },
-
     /// Show help for gem commands
     #[command(name = "gem-help")]
     GemHelp {
@@ -3750,19 +3665,6 @@ async fn main() {
             };
             commands::gem_list::run(options).await
         }
-        Commands::GemMirror {
-            add,
-            remove,
-            list,
-            clear,
-            verbose: _,
-            quiet: _,
-            silent: _,
-            config_file: _,
-            backtrace: _,
-            debug: _,
-            norc: _,
-        } => commands::gem_mirror::run(add.as_deref(), remove.as_deref(), list, clear),
         Commands::GemOwner {
             gem,
             add,
@@ -3981,27 +3883,6 @@ async fn main() {
                 norc,
             };
             commands::gem_search::run(options).await
-        }
-        Commands::GemServer {
-            port,
-            dir,
-            launch,
-            bind,
-            daemon,
-            verbose,
-            quiet,
-            silent,
-        } => {
-            use std::path::PathBuf;
-            let options = commands::gem_server::ServerOptions {
-                launch,
-                daemon,
-                verbose,
-                quiet,
-                silent,
-            };
-            commands::gem_server::run_with_options(port, dir.map(PathBuf::from), bind, &options)
-                .await
         }
         Commands::GemSignin {
             host,
