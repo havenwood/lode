@@ -304,13 +304,11 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let name = parts
-            .first()
-            .ok_or_else(|| LockfileError::ParseError {
-                line: self.current_line,
-                message: format!("missing gem name in: {line}"),
-            })?
-            .to_string();
+        let name = (*parts.first().ok_or_else(|| LockfileError::ParseError {
+            line: self.current_line,
+            message: format!("missing gem name in: {line}"),
+        })?)
+        .to_string();
         let version_part = parts
             .get(1)
             .ok_or_else(|| LockfileError::ParseError {

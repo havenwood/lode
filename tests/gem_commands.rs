@@ -151,7 +151,7 @@ fn parse_test_gem_name(dir_name: &str) -> (String, String, String) {
                     }
                 })
                 .unwrap_or_else(|| "ruby".to_string());
-            (version_str.to_string(), platform)
+            ((*version_str).to_string(), platform)
         },
     );
 

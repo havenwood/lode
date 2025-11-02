@@ -166,7 +166,7 @@ impl FullIndex {
         if let Some(obj) = value.as_object() {
             // Try common field names
             for key in &["__value", "version", "@version", "v", "@v"] {
-                let symbol = alox_48::Symbol::from(key.to_string());
+                let symbol = alox_48::Symbol::from((*key).to_string());
                 if let Some(field) = obj.fields.get(&symbol)
                     && let Some(rb_string) = field.as_string()
                 {

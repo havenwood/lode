@@ -509,8 +509,8 @@ fn parse_dependency_line(line: &str) -> Option<Dependency> {
         // Extract quoted strings
         let parts: Vec<&str> = trimmed.split('"').collect();
         if parts.len() >= 3 {
-            let name = parts.get(1)?.to_string();
-            let requirements = parts.get(3).unwrap_or(&">= 0").to_string();
+            let name = (*parts.get(1)?).to_string();
+            let requirements = (*parts.get(3).unwrap_or(&">= 0")).to_string();
             return Some(Dependency { name, requirements });
         }
     }

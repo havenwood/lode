@@ -349,7 +349,7 @@ pub(crate) async fn run(
     };
 
     // Set Ruby version
-    lockfile.ruby_version = gemfile.ruby_version.clone();
+    lockfile.ruby_version.clone_from(&gemfile.ruby_version);
 
     // Set bundler version (use provided version, or lode version if not specified)
     lockfile.bundled_with =

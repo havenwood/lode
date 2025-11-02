@@ -239,8 +239,35 @@ pub fn detect_ruby_version_from_lockfile<P: AsRef<Path>>(lockfile_path: P) -> Op
 }
 
 /// Get standard gem paths for the current OS and Ruby version
+///
+/// Queries system `gem environment gempath` if available, otherwise returns OS-specific
+/// defaults. Note: must use system gem (not lode) to avoid circular dependency.
 #[must_use]
 pub fn get_standard_gem_paths(ruby_version: &str) -> Vec<PathBuf> {
+    // Try system gem command first (gracefully fails if unavailable)
+    if let Ok(output) = Command::new("gem")
+        .args(["environment", "gempath"])
+        .output()
+        && output.status.success()
+    {
+        let gempath = String::from_utf8_lossy(&output.stdout);
+        #[cfg(windows)]
+        let separator = ';';
+        #[cfg(not(windows))]
+        let separator = ':';
+
+        let paths: Vec<PathBuf> = gempath
+            .trim()
+            .split(separator)
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from)
+            .collect();
+        if !paths.is_empty() {
+            return paths;
+        }
+    }
+
+    // Fall back to OS-specific defaults if gem command unavailable or returned no paths
     let mut paths = Vec::new();
 
     #[cfg(target_os = "macos")]
@@ -265,6 +292,14 @@ pub fn get_standard_gem_paths(ruby_version: &str) -> Vec<PathBuf> {
         )));
     }
 
+    #[cfg(target_os = "freebsd")]
+    {
+        paths.push(PathBuf::from(format!(
+            "/usr/local/lib/ruby/gems/{ruby_version}"
+        )));
+        paths.push(PathBuf::from(format!("/usr/lib/ruby/gems/{ruby_version}")));
+    }
+
     #[cfg(target_os = "windows")]
     {
         let program_files =
@@ -277,6 +312,18 @@ pub fn get_standard_gem_paths(ruby_version: &str) -> Vec<PathBuf> {
         paths.push(PathBuf::from(format!(
             "{program_files}\\Ruby\\lib\\ruby\\gems\\{ruby_version}"
         )));
+    }
+
+    // Generic Unix fallback for other systems
+    #[cfg(all(
+        unix,
+        not(any(target_os = "macos", target_os = "linux", target_os = "freebsd"))
+    ))]
+    {
+        paths.push(PathBuf::from(format!(
+            "/usr/local/lib/ruby/gems/{ruby_version}"
+        )));
+        paths.push(PathBuf::from(format!("/usr/lib/ruby/gems/{ruby_version}")));
     }
 
     paths
@@ -529,7 +576,11 @@ mod tests {
         let paths = get_standard_gem_paths("3.4.0");
         assert!(!paths.is_empty());
         for path in &paths {
-            assert!(path.to_string_lossy().contains("3.4.0"));
+            let path_str = path.to_string_lossy();
+            assert!(
+                path_str.contains("gem") || path_str.contains("ruby"),
+                "Path should be a gem/ruby path: {path:?}"
+            );
         }
     }
 
@@ -796,9 +847,10 @@ mod tests {
         fn contains_ruby_version() {
             let paths = get_standard_gem_paths("3.4.0");
             for path in &paths {
+                let path_str = path.to_string_lossy();
                 assert!(
-                    path.to_string_lossy().contains("3.4.0"),
-                    "Path should contain ruby version: {path:?}"
+                    path_str.contains("gem") || path_str.contains("ruby"),
+                    "Path should be a gem/ruby path: {path:?}"
                 );
             }
         }
@@ -819,13 +871,21 @@ mod tests {
                 .join("|");
 
             #[cfg(target_os = "macos")]
-            assert!(all_paths_str.contains("Library") || all_paths_str.contains("homebrew"));
+            assert!(
+                all_paths_str.contains("Library")
+                    || all_paths_str.contains("homebrew")
+                    || all_paths_str.contains("ruby")
+                    || all_paths_str.contains("gem")
+            );
 
             #[cfg(target_os = "linux")]
-            assert!(all_paths_str.contains("lib/ruby/gems"));
+            assert!(all_paths_str.contains("ruby") || all_paths_str.contains("gem"));
 
             #[cfg(target_os = "windows")]
             assert!(all_paths_str.contains("Ruby") || all_paths_str.contains("gem"));
+
+            #[cfg(target_os = "freebsd")]
+            assert!(all_paths_str.contains("ruby") || all_paths_str.contains("gem"));
         }
     }
 
