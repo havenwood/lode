@@ -2908,25 +2908,40 @@ async fn main() {
             redownload,
             full_index,
         } => {
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+
+            // Merge settings with proper priority (CLI > Config > Env > Default)
+            let jobs_merged = jobs
+                .or(bundle_config.jobs)
+                .or_else(lode::env_vars::bundle_jobs);
+            let retry_merged = retry
+                .or_else(|| bundle_config.retry.map(|v| v as usize))
+                .or_else(|| lode::env_vars::bundle_retry().map(|v| v as usize));
+            let local_merged =
+                local || bundle_config.local.unwrap_or(false) || lode::env_vars::bundle_local();
+            let redownload_merged = redownload
+                || bundle_config.force.unwrap_or(false)
+                || lode::env_vars::bundle_force();
+
             commands::update::run(
                 &gems,
                 all,
                 conservative,
                 gemfile.as_deref(),
-                jobs,
+                jobs_merged,
                 quiet,
-                retry,
+                retry_merged,
                 patch,
                 minor,
                 major,
                 strict,
-                local,
+                local_merged,
                 pre,
                 group.as_deref(),
                 source.as_deref(),
                 ruby,
                 bundler.as_deref(),
-                redownload,
+                redownload_merged,
                 full_index,
             )
             .await
@@ -2972,8 +2987,14 @@ async fn main() {
             full_index,
             quiet,
         } => {
-            // Merge environment variables with command-line arguments
-            let verbose_merged = verbose || lode::env_vars::bundle_verbose();
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+
+            // Merge settings with proper priority (CLI > Config > Env > Default)
+            let verbose_merged = verbose
+                || bundle_config.verbose.unwrap_or(false)
+                || lode::env_vars::bundle_verbose();
+            let local_merged =
+                local || bundle_config.local.unwrap_or(false) || lode::env_vars::bundle_local();
 
             commands::lock::run(
                 &gemfile,
@@ -2988,7 +3009,7 @@ async fn main() {
                 major,
                 strict,
                 conservative,
-                local,
+                local_merged,
                 pre,
                 bundler.as_deref(),
                 normalize_platforms,
@@ -3018,21 +3039,69 @@ async fn main() {
                 |gemfile_path| format!("{gemfile_path}.lock"),
             );
 
-            // Merge environment variables with command-line arguments (CLI takes precedence)
-            let jobs_merged = jobs.or_else(lode::env_vars::bundle_jobs);
-            let retry_merged = retry.or_else(|| lode::env_vars::bundle_retry().map(|v| v as usize));
-            let local_merged = local || lode::env_vars::bundle_local();
-            let prefer_local_merged = prefer_local || lode::env_vars::bundle_prefer_local();
-            let force_merged = redownload || lode::env_vars::bundle_force();
+            // Load bundle config from .bundle/config files
+            // Priority: CLI flags > Local config > Env vars > Global config > Defaults
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+
+            // Merge settings with proper priority (CLI > Config > Env > Default)
+            let jobs_merged = jobs
+                .or(bundle_config.jobs)
+                .or_else(lode::env_vars::bundle_jobs);
+            let retry_merged = retry
+                .or_else(|| bundle_config.retry.map(|v| v as usize))
+                .or_else(|| lode::env_vars::bundle_retry().map(|v| v as usize));
+            let local_merged =
+                local || bundle_config.local.unwrap_or(false) || lode::env_vars::bundle_local();
+            let prefer_local_merged = prefer_local
+                || bundle_config.prefer_local.unwrap_or(false)
+                || lode::env_vars::bundle_prefer_local();
+            let force_merged = redownload
+                || bundle_config.force.unwrap_or(false)
+                || lode::env_vars::bundle_force();
             let no_cache_merged = no_cache; // No env var for this (not commonly used)
-            let verbose_merged = verbose || lode::env_vars::bundle_verbose();
+            let verbose_merged = verbose
+                || bundle_config.verbose.unwrap_or(false)
+                || lode::env_vars::bundle_verbose();
 
             // Warn if running as root (unless silenced)
-            if lode::user::is_root() && !lode::env_vars::bundle_silence_root_warning() && !quiet {
+            let silence_root_warning = bundle_config.silence_root_warning.unwrap_or(false)
+                || lode::env_vars::bundle_silence_root_warning();
+            if lode::user::is_root() && !silence_root_warning && !quiet {
                 eprintln!(
                     "Warning: Running as root user. Set BUNDLE_SILENCE_ROOT_WARNING=1 to silence this warning."
                 );
             }
+
+            // Handle deployment mode: deployment = frozen + exclude dev/test
+            let deployment_mode = bundle_config.deployment.unwrap_or(false);
+            let frozen_merged = deployment_mode
+                || bundle_config.frozen.unwrap_or(false)
+                || lode::env_vars::bundle_frozen();
+
+            // Gather group filters from config (Config > Env > Default)
+            let mut without_groups_merged = bundle_config
+                .without
+                .clone()
+                .or_else(lode::env_vars::bundle_without)
+                .unwrap_or_default();
+            let with_groups_merged = bundle_config
+                .with
+                .clone()
+                .or_else(lode::env_vars::bundle_with)
+                .unwrap_or_default();
+
+            // Deployment mode automatically excludes development and test groups
+            if deployment_mode {
+                if !without_groups_merged.contains(&"development".to_string()) {
+                    without_groups_merged.push("development".to_string());
+                }
+                if !without_groups_merged.contains(&"test".to_string()) {
+                    without_groups_merged.push("test".to_string());
+                }
+            }
+
+            // Auto-clean after install if BUNDLE_CLEAN is enabled
+            let auto_clean = bundle_config.clean.unwrap_or(false) || lode::env_vars::bundle_clean();
 
             commands::install::run(commands::install::InstallOptions {
                 lockfile_path: &lockfile_path,
@@ -3048,6 +3117,10 @@ async fn main() {
                 trust_policy: trust_policy.as_deref(),
                 full_index,
                 target_rbconfig: target_rbconfig.as_deref(),
+                frozen: frozen_merged,
+                without_groups: without_groups_merged,
+                with_groups: with_groups_merged,
+                auto_clean,
             })
             .await
         }
@@ -3058,8 +3131,12 @@ async fn main() {
             all,
             all_platforms,
         } => {
-            let shebang_merged = shebang.or_else(lode::env_vars::bundle_shebang);
-            let force_merged = force || lode::env_vars::bundle_force();
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+            let shebang_merged = shebang
+                .or(bundle_config.shebang)
+                .or_else(lode::env_vars::bundle_shebang);
+            let force_merged =
+                force || bundle_config.force.unwrap_or(false) || lode::env_vars::bundle_force();
 
             commands::binstubs::run(
                 &gems,
@@ -3148,7 +3225,13 @@ async fn main() {
             vendor,
             dry_run,
             force,
-        } => commands::clean::run(vendor.as_deref(), dry_run, force),
+        } => {
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+            let force_merged =
+                force || bundle_config.force.unwrap_or(false) || lode::env_vars::bundle_force();
+
+            commands::clean::run(vendor.as_deref(), dry_run, force_merged)
+        }
         Commands::Cache {
             all_platforms,
             cache_path,
@@ -3156,10 +3239,15 @@ async fn main() {
             no_install,
             quiet,
         } => {
-            // Merge environment variables with command-line arguments
-            let all_platforms_merged =
-                all_platforms || lode::env_vars::bundle_cache_all_platforms();
-            let cache_path_merged = cache_path.or_else(lode::env_vars::bundle_cache_path);
+            let bundle_config = lode::BundleConfig::load().unwrap_or_default();
+
+            // Merge settings with proper priority (CLI > Config > Env > Default)
+            let all_platforms_merged = all_platforms
+                || bundle_config.cache_all_platforms.unwrap_or(false)
+                || lode::env_vars::bundle_cache_all_platforms();
+            let cache_path_merged = cache_path
+                .or(bundle_config.cache_path)
+                .or_else(lode::env_vars::bundle_cache_path);
 
             commands::cache::run(
                 all_platforms_merged,

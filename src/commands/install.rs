@@ -44,6 +44,14 @@ pub(crate) struct InstallOptions<'a> {
     pub full_index: bool,
     /// Alternative rbconfig path for cross compilation
     pub target_rbconfig: Option<&'a str>,
+    /// Frozen mode - disallow Gemfile changes without lockfile update
+    pub frozen: bool,
+    /// Groups to exclude from installation (`BUNDLE_WITHOUT`)
+    pub without_groups: Vec<String>,
+    /// Groups to explicitly include (`BUNDLE_WITH`)
+    pub with_groups: Vec<String>,
+    /// Auto-clean after install (`BUNDLE_CLEAN`)
+    pub auto_clean: bool,
 }
 
 /// Run the install command
@@ -81,7 +89,7 @@ pub(crate) async fn run(options: InstallOptions<'_>) -> Result<()> {
 
     // Destructure remaining options for easier access in the rest of the function
     let InstallOptions {
-        lockfile_path: _,
+        lockfile_path,
         redownload,
         verbose,
         quiet,
@@ -94,7 +102,16 @@ pub(crate) async fn run(options: InstallOptions<'_>) -> Result<()> {
         trust_policy,
         full_index,
         target_rbconfig,
+        frozen,
+        without_groups,
+        with_groups,
+        auto_clean,
     } = options;
+
+    // 3. Check frozen mode - Gemfile must not have changed without updating lockfile
+    if frozen {
+        check_frozen_mode(lockfile_path, verbose)?;
+    }
 
     // Local mode: only use cached gems, no remote fetching
     if local && verbose {
@@ -206,8 +223,21 @@ pub(crate) async fn run(options: InstallOptions<'_>) -> Result<()> {
     // 3. Load Gemfile for sources (supports Gemfile and gems.rb)
     let gemfile = Gemfile::parse_file(lode::paths::find_gemfile()).ok();
 
-    // 4. Install all gems from lockfile (Bundler 4 removed group filtering flags)
-    let gems_to_install = lockfile.gems.clone();
+    // 4. Filter gems by groups (without/with group support)
+    let gems_to_install = if !without_groups.is_empty() || !with_groups.is_empty() {
+        if let Some(ref gf) = gemfile {
+            filter_gems_by_groups(&lockfile.gems, gf, &without_groups, &with_groups, verbose)
+        } else {
+            if verbose {
+                println!(
+                    "Warning: Group filtering requested but no Gemfile found, installing all gems"
+                );
+            }
+            lockfile.gems.clone()
+        }
+    } else {
+        lockfile.gems.clone()
+    };
 
     if gems_to_install.is_empty() {
         println!("No gems to install after filtering.");
@@ -791,6 +821,26 @@ pub(crate) async fn run(options: InstallOptions<'_>) -> Result<()> {
         println!("Binstubs: {binstub_count} binstub(s) generated");
     }
 
+    // 10. Auto-clean if BUNDLE_CLEAN is enabled
+    if auto_clean {
+        if verbose {
+            println!("\nAuto-cleaning unused gems...");
+        }
+        // Call clean command with same vendor directory
+        match crate::commands::clean::run(Some(vendor_dir.to_str().unwrap()), false, false) {
+            Ok(()) => {
+                if verbose {
+                    println!("Auto-clean completed");
+                }
+            }
+            Err(e) => {
+                if verbose {
+                    eprintln!("Warning: Auto-clean failed: {e}");
+                }
+            }
+        }
+    }
+
     // 11. Create standalone bundle if requested
     if let Some(standalone_groups) = standalone {
         if !quiet {
@@ -906,4 +956,362 @@ pub(crate) async fn run(options: InstallOptions<'_>) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Check frozen mode - ensure Gemfile hasn't changed without updating lockfile
+fn check_frozen_mode(lockfile_path: &str, verbose: bool) -> Result<()> {
+    // Determine Gemfile path from lockfile path
+    let gemfile_path = if std::path::Path::new(lockfile_path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("lock"))
+    {
+        lockfile_path.trim_end_matches(".lock")
+    } else {
+        "Gemfile"
+    };
+
+    // Check if Gemfile exists
+    let gemfile_pathbuf = std::path::Path::new(gemfile_path);
+    if !gemfile_pathbuf.exists() {
+        // No Gemfile, nothing to check
+        return Ok(());
+    }
+
+    // Get modification times
+    let lockfile_metadata = std::fs::metadata(lockfile_path)
+        .context("Lockfile not found - frozen mode requires an existing lockfile")?;
+    let gemfile_metadata =
+        std::fs::metadata(gemfile_path).context("Failed to read Gemfile metadata")?;
+
+    let lockfile_modified = lockfile_metadata
+        .modified()
+        .context("Failed to get lockfile modification time")?;
+    let gemfile_modified = gemfile_metadata
+        .modified()
+        .context("Failed to get Gemfile modification time")?;
+
+    // If Gemfile is newer than lockfile, error in frozen mode
+    if gemfile_modified > lockfile_modified {
+        anyhow::bail!(
+            "Your Gemfile has been modified since the lockfile was generated.\n\
+             In frozen mode, Bundler will not check for changes.\n\
+             To update the lockfile, run `bundle lock` or `bundle install` without frozen mode."
+        );
+    }
+
+    if verbose {
+        println!("Frozen mode: Gemfile matches lockfile");
+    }
+
+    Ok(())
+}
+
+/// Filter gems by group membership based on without/with group lists
+fn filter_gems_by_groups(
+    lockfile_gems: &[lode::GemSpec],
+    gemfile: &lode::Gemfile,
+    without_groups: &[String],
+    with_groups: &[String],
+    verbose: bool,
+) -> Vec<lode::GemSpec> {
+    use std::collections::HashMap;
+
+    // Build a map of gem names to their groups from the Gemfile
+    let gem_groups: HashMap<String, Vec<String>> = gemfile
+        .gems
+        .iter()
+        .map(|gem_dep| (gem_dep.name.clone(), gem_dep.groups.clone()))
+        .collect();
+
+    // Default group is :default - gems without explicit group are in default group
+    let default_group = "default".to_string();
+
+    let filtered: Vec<_> = lockfile_gems
+        .iter()
+        .filter(|gem| {
+            let groups = gem_groups
+                .get(&gem.name)
+                .cloned()
+                .unwrap_or_else(|| vec![default_group.clone()]);
+
+            // If with_groups is specified, only include gems in those groups
+            if !with_groups.is_empty() {
+                let in_with_groups = groups.iter().any(|g| with_groups.contains(g));
+                if !in_with_groups {
+                    if verbose {
+                        println!(
+                            "  Excluding {} (not in with groups: {:?})",
+                            gem.name, with_groups
+                        );
+                    }
+                    return false;
+                }
+            }
+
+            // If without_groups is specified, exclude gems in those groups
+            if !without_groups.is_empty() {
+                let in_without_groups = groups.iter().any(|g| without_groups.contains(g));
+                if in_without_groups {
+                    if verbose {
+                        println!(
+                            "  Excluding {} (in without groups: {:?})",
+                            gem.name, without_groups
+                        );
+                    }
+                    return false;
+                }
+            }
+
+            true
+        })
+        .cloned()
+        .collect();
+
+    if verbose && filtered.len() != lockfile_gems.len() {
+        println!(
+            "Group filtering: {} -> {} gems",
+            lockfile_gems.len(),
+            filtered.len()
+        );
+    }
+
+    filtered
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lode::{GemDependency, GemSpec, Gemfile};
+    use std::fs;
+    use std::thread;
+    use std::time::Duration;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_check_frozen_mode_no_gemfile() {
+        let temp_dir = TempDir::new().unwrap();
+        let lockfile = temp_dir.path().join("Gemfile.lock");
+        fs::write(&lockfile, "LOCKFILE").unwrap();
+
+        // Should pass - no Gemfile to check
+        let result = check_frozen_mode(lockfile.to_str().unwrap(), false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_check_frozen_mode_gemfile_older_than_lockfile() {
+        let temp_dir = TempDir::new().unwrap();
+        let gemfile = temp_dir.path().join("Gemfile");
+        let lockfile = temp_dir.path().join("Gemfile.lock");
+
+        // Create Gemfile first
+        fs::write(&gemfile, "source 'https://rubygems.org'").unwrap();
+        thread::sleep(Duration::from_millis(10));
+        // Create lockfile after (newer)
+        fs::write(&lockfile, "LOCKFILE").unwrap();
+
+        // Should pass - Gemfile is older
+        let result = check_frozen_mode(lockfile.to_str().unwrap(), false);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_check_frozen_mode_gemfile_newer_than_lockfile() {
+        let temp_dir = TempDir::new().unwrap();
+        let gemfile = temp_dir.path().join("Gemfile");
+        let lockfile = temp_dir.path().join("Gemfile.lock");
+
+        // Create lockfile first
+        fs::write(&lockfile, "LOCKFILE").unwrap();
+        thread::sleep(Duration::from_millis(10));
+        // Create Gemfile after (newer)
+        fs::write(&gemfile, "source 'https://rubygems.org'").unwrap();
+
+        // Should fail - Gemfile is newer
+        let result = check_frozen_mode(lockfile.to_str().unwrap(), false);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Gemfile has been modified")
+        );
+    }
+
+    #[test]
+    fn test_filter_gems_by_groups_without() {
+        let gems = vec![
+            GemSpec::new(
+                "rake".to_string(),
+                "13.0.0".to_string(),
+                None,
+                vec![],
+                vec!["default".to_string()],
+            ),
+            GemSpec::new(
+                "rspec".to_string(),
+                "3.0.0".to_string(),
+                None,
+                vec![],
+                vec!["test".to_string()],
+            ),
+        ];
+
+        let gemfile = Gemfile {
+            source: "https://rubygems.org".to_string(),
+            ruby_version: None,
+            gems: vec![
+                GemDependency {
+                    name: "rake".to_string(),
+                    version_requirement: String::new(),
+                    groups: vec!["default".to_string()],
+                    source: None,
+                    git: None,
+                    branch: None,
+                    tag: None,
+                    ref_: None,
+                    path: None,
+                    platforms: vec![],
+                    require: None,
+                },
+                GemDependency {
+                    name: "rspec".to_string(),
+                    version_requirement: String::new(),
+                    groups: vec!["test".to_string()],
+                    source: None,
+                    git: None,
+                    branch: None,
+                    tag: None,
+                    ref_: None,
+                    path: None,
+                    platforms: vec![],
+                    require: None,
+                },
+            ],
+            sources: vec![],
+            gemspecs: vec![],
+        };
+
+        let without = vec!["test".to_string()];
+        let with = vec![];
+        let filtered = filter_gems_by_groups(&gems, &gemfile, &without, &with, false);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(
+            filtered.first().expect("should have first gem").name,
+            "rake"
+        );
+    }
+
+    #[test]
+    fn test_filter_gems_by_groups_with() {
+        let gems = vec![
+            GemSpec::new(
+                "rake".to_string(),
+                "13.0.0".to_string(),
+                None,
+                vec![],
+                vec!["default".to_string()],
+            ),
+            GemSpec::new(
+                "rspec".to_string(),
+                "3.0.0".to_string(),
+                None,
+                vec![],
+                vec!["test".to_string()],
+            ),
+        ];
+
+        let gemfile = Gemfile {
+            source: "https://rubygems.org".to_string(),
+            ruby_version: None,
+            gems: vec![
+                GemDependency {
+                    name: "rake".to_string(),
+                    version_requirement: String::new(),
+                    groups: vec!["default".to_string()],
+                    source: None,
+                    git: None,
+                    branch: None,
+                    tag: None,
+                    ref_: None,
+                    path: None,
+                    platforms: vec![],
+                    require: None,
+                },
+                GemDependency {
+                    name: "rspec".to_string(),
+                    version_requirement: String::new(),
+                    groups: vec!["test".to_string()],
+                    source: None,
+                    git: None,
+                    branch: None,
+                    tag: None,
+                    ref_: None,
+                    path: None,
+                    platforms: vec![],
+                    require: None,
+                },
+            ],
+            sources: vec![],
+            gemspecs: vec![],
+        };
+
+        let without = vec![];
+        let with = vec!["test".to_string()];
+        let filtered = filter_gems_by_groups(&gems, &gemfile, &without, &with, false);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(
+            filtered.first().expect("should have first gem").name,
+            "rspec"
+        );
+    }
+
+    #[test]
+    fn test_filter_gems_by_groups_transitive_deps_as_default() {
+        let gems = vec![
+            GemSpec::new(
+                "rake".to_string(),
+                "13.0.0".to_string(),
+                None,
+                vec![],
+                vec!["default".to_string()],
+            ),
+            GemSpec::new(
+                "unknown-dep".to_string(),
+                "1.0.0".to_string(),
+                None,
+                vec![],
+                vec![],
+            ),
+        ];
+
+        let gemfile = Gemfile {
+            source: "https://rubygems.org".to_string(),
+            ruby_version: None,
+            gems: vec![GemDependency {
+                name: "rake".to_string(),
+                version_requirement: String::new(),
+                groups: vec!["default".to_string()],
+                source: None,
+                git: None,
+                branch: None,
+                tag: None,
+                ref_: None,
+                path: None,
+                platforms: vec![],
+                require: None,
+            }],
+            sources: vec![],
+            gemspecs: vec![],
+        };
+
+        let without = vec!["test".to_string()];
+        let with = vec![];
+        let filtered = filter_gems_by_groups(&gems, &gemfile, &without, &with, false);
+
+        // Both gems should pass - rake is default, unknown-dep treated as default
+        assert_eq!(filtered.len(), 2);
+    }
 }

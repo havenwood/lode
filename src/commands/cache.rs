@@ -20,9 +20,7 @@ pub(crate) async fn run(
     quiet: bool,
 ) -> Result<()> {
     // Apply environment variable defaults
-    let all_platforms = all_platforms
-        || lode::env_vars::bundle_cache_all()
-        || lode::env_vars::bundle_cache_all_platforms();
+    let all_platforms = all_platforms || lode::env_vars::bundle_cache_all_platforms();
     let no_install = no_install || lode::env_vars::bundle_no_install();
 
     // Determine paths
@@ -184,6 +182,10 @@ pub(crate) async fn run(
             trust_policy: None,
             full_index: false,
             target_rbconfig: None,
+            frozen: false,
+            without_groups: vec![],
+            with_groups: vec![],
+            auto_clean: false,
         })
         .await?;
     }

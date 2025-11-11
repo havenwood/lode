@@ -174,6 +174,10 @@ async fn run_with_gemfile(
             trust_policy: None,
             full_index: false,
             target_rbconfig: None,
+            frozen: false,
+            without_groups: vec![],
+            with_groups: vec![],
+            auto_clean: false,
         })
         .await?;
         if !quiet {
