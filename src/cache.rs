@@ -17,6 +17,7 @@ pub struct Stats {
 
 impl Stats {
     /// Create empty stats
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             files: 0,
@@ -35,6 +36,10 @@ impl Default for Stats {
 ///
 /// Walks the directory tree and counts files and total size.
 /// Returns empty stats if directory doesn't exist (not an error).
+///
+/// # Errors
+///
+/// Returns an error if directory traversal fails.
 pub fn collect_stats<P: AsRef<Path>>(cache_dir: P) -> std::io::Result<Stats> {
     let cache_dir = cache_dir.as_ref();
     let mut stats = Stats::new();
@@ -74,6 +79,8 @@ fn walk_dir(dir: &Path, stats: &mut Stats) -> std::io::Result<()> {
 /// Convert bytes to human-readable format using binary units (1 KiB = 1024 bytes).
 /// Examples: 512 -> "512 B", 1024 -> "1.0 KiB", 1048576 -> "1.0 MiB"
 #[must_use]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_precision_loss)]
 pub fn human_bytes(size: i64) -> String {
     const UNIT: f64 = 1024.0;
     const UNITS: &[char] = &['K', 'M', 'G', 'T', 'P', 'E'];
@@ -200,6 +207,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cast_possible_truncation)]
     fn human_bytes_mib() {
         assert_eq!(human_bytes(1024 * 1024), "1.0 MiB");
         assert_eq!(human_bytes(1024 * 1024 * 10), "10.0 MiB");

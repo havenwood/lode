@@ -135,6 +135,7 @@ impl Default for Gemfile {
 
 impl Gemfile {
     /// Create an empty Gemfile
+    #[must_use]
     pub fn new() -> Self {
         Self {
             gems: Vec::new(),
@@ -222,6 +223,7 @@ impl Gemfile {
     }
 
     /// Get all gems in a specific group
+    #[must_use]
     pub fn gems_in_group(&self, group: &str) -> Vec<&GemDependency> {
         self.gems
             .iter()
@@ -230,6 +232,7 @@ impl Gemfile {
     }
 
     /// Get all gems excluding specific groups
+    #[must_use]
     pub fn gems_without_groups(&self, excluded: &[String]) -> Vec<&GemDependency> {
         self.gems
             .iter()

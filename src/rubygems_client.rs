@@ -411,6 +411,10 @@ impl RubyGemsClient {
     ///
     /// More detailed than `fetch_versions` but slower. Use `fetch_versions` for
     /// dependency resolution and this only when you need detailed metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if API request or parsing fails.
     pub async fn fetch_gem_info(
         &self,
         gem_name: &str,

@@ -182,6 +182,7 @@ impl DownloadManager {
     /// # Errors
     ///
     /// Returns an error if the download fails, the network is unavailable, or the gem cannot be found on any source.
+    #[allow(clippy::cast_possible_truncation)]
     pub async fn download_gem(&self, spec: &GemSpec) -> Result<PathBuf, DownloadError> {
         let filename = format!("{}.gem", spec.full_name_with_platform());
         let cache_path = self.cache_dir.join(&filename);

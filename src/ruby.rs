@@ -53,12 +53,14 @@ impl std::str::FromStr for RubyEngine {
 impl RubyEngine {
     /// Check if engine supports native C extensions
     #[inline]
+    #[must_use]
     pub const fn supports_native_extensions(&self) -> bool {
         matches!(self, Self::Mri | Self::TruffleRuby)
     }
 
     /// Get platform suffix for this engine (e.g., "java" for `JRuby`)
     #[inline]
+    #[must_use]
     pub const fn platform_suffix(&self) -> Option<&str> {
         match self {
             Self::JRuby => Some("java"),
@@ -68,6 +70,7 @@ impl RubyEngine {
 
     /// Get engine name as string
     #[inline]
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::Mri => "mri",

@@ -37,18 +37,24 @@ pub struct GemStore {
 
 impl GemStore {
     /// Create a new `GemStore`, auto-detecting system gem directory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if system gem directory cannot be detected.
     pub fn new() -> Result<Self> {
         let gem_dir = Self::find_gem_dir()?;
         Ok(Self { gem_dir })
     }
 
     /// Create a `GemStore` with explicit gem directory
+    #[must_use]
     pub const fn with_path(path: PathBuf) -> Self {
         Self { gem_dir: path }
     }
 
     /// Get the system gem directory path
     #[inline]
+    #[must_use]
     pub fn gem_dir(&self) -> &Path {
         &self.gem_dir
     }
@@ -103,6 +109,10 @@ impl GemStore {
     }
 
     /// List all installed gems
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem directory cannot be read.
     pub fn list_gems(&self) -> Result<Vec<InstalledGem>> {
         let mut gems = Vec::new();
 
@@ -140,6 +150,10 @@ impl GemStore {
     }
 
     /// Find gems matching a pattern
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem listing fails.
     pub fn find_gems(&self, pattern: Option<&str>) -> Result<Vec<InstalledGem>> {
         let mut gems = self.list_gems()?;
 
@@ -152,6 +166,10 @@ impl GemStore {
     }
 
     /// Find a specific gem by name (returns all versions)
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem listing fails.
     pub fn find_gem_by_name(&self, name: &str) -> Result<Vec<InstalledGem>> {
         let name_lower = name.to_lowercase();
         let all_gems = self.list_gems()?;
@@ -164,6 +182,10 @@ impl GemStore {
     }
 
     /// Get the latest version of a gem
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem lookup fails.
     pub fn find_gem_latest(&self, name: &str) -> Result<Option<InstalledGem>> {
         let mut versions = self.find_gem_by_name(name)?;
         Ok(versions.pop()) // Already sorted, last is latest

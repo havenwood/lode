@@ -38,6 +38,10 @@ impl RustExtensionBuilder {
     /// 2. `cargo` in PATH
     /// 3. ~/.cargo/bin/cargo
     /// 4. Error if not found
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Cargo executable cannot be found.
     pub fn new(verbose: bool) -> Result<Self> {
         let cargo_path = Self::find_cargo_executable().context(
             "Cargo executable not found. Rust extensions require Cargo to be installed.",
@@ -85,6 +89,10 @@ impl RustExtensionBuilder {
     ///
     /// # Returns
     /// Result with build status and output
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Cargo build fails.
     pub fn build(&self, gem_name: &str, gem_dir: &Path, _cargo_toml: &Path) -> Result<BuildResult> {
         let start_time = Instant::now();
         let mut output_buffer = Vec::new();

@@ -14,6 +14,7 @@ fn is_enabled(var: &str) -> bool {
 // HTTP_PROXY, HTTPS_PROXY, NO_PROXY environment variables for proxy configuration
 
 /// Get HTTP/HTTPS proxy URL (checks `HTTPS_PROXY` then `HTTP_PROXY`).
+#[must_use]
 pub fn http_proxy() -> Option<String> {
     env::var("HTTPS_PROXY")
         .or_else(|_| env::var("https_proxy"))
@@ -23,11 +24,13 @@ pub fn http_proxy() -> Option<String> {
 }
 
 /// Get `NO_PROXY` list (comma-separated hosts to bypass proxy).
+#[must_use]
 pub fn no_proxy() -> Option<String> {
     env::var("NO_PROXY").or_else(|_| env::var("no_proxy")).ok()
 }
 
 /// Get HTTP proxy username for authentication.
+#[must_use]
 pub fn http_proxy_user() -> Option<String> {
     env::var("HTTP_PROXY_USER")
         .or_else(|_| env::var("http_proxy_user"))
@@ -35,6 +38,7 @@ pub fn http_proxy_user() -> Option<String> {
 }
 
 /// Get HTTP proxy password for authentication.
+#[must_use]
 pub fn http_proxy_pass() -> Option<String> {
     env::var("HTTP_PROXY_PASS")
         .or_else(|_| env::var("http_proxy_pass"))
@@ -42,6 +46,7 @@ pub fn http_proxy_pass() -> Option<String> {
 }
 
 /// Get HTTPS proxy username (falls back to `HTTP_PROXY_USER`).
+#[must_use]
 pub fn https_proxy_user() -> Option<String> {
     env::var("HTTPS_PROXY_USER")
         .or_else(|_| env::var("https_proxy_user"))
@@ -51,6 +56,7 @@ pub fn https_proxy_user() -> Option<String> {
 }
 
 /// Get HTTPS proxy password (falls back to `HTTP_PROXY_PASS`).
+#[must_use]
 pub fn https_proxy_pass() -> Option<String> {
     env::var("HTTPS_PROXY_PASS")
         .or_else(|_| env::var("https_proxy_pass"))
@@ -60,11 +66,13 @@ pub fn https_proxy_pass() -> Option<String> {
 }
 
 /// Get `RubyGems` API host (defaults to `https://rubygems.org`).
+#[must_use]
 pub fn rubygems_host() -> String {
     env::var("RUBYGEMS_HOST").unwrap_or_else(|_| "https://rubygems.org".to_string())
 }
 
 /// Get gem source URL from `GEM_SOURCE` (first URL if colon-separated list).
+#[must_use]
 pub fn gem_source() -> Option<String> {
     env::var("GEM_SOURCE").ok().map(|sources| {
         // Take first source if multiple are provided (colon-separated)
@@ -73,6 +81,7 @@ pub fn gem_source() -> Option<String> {
 }
 
 /// Get network timeout in seconds (defaults to 10 if not set or invalid).
+#[must_use]
 pub fn bundle_timeout() -> u64 {
     env::var("BUNDLE_TIMEOUT")
         .ok()
@@ -83,12 +92,14 @@ pub fn bundle_timeout() -> u64 {
 // RubyGems authentication - RUBYGEMS_API_KEY and GEM_HOST_API_KEY_*
 
 /// Get `RubyGems` API key (checked before credentials file).
+#[must_use]
 pub fn rubygems_api_key() -> Option<String> {
     env::var("RUBYGEMS_API_KEY").ok()
 }
 
 /// Get host-specific API key (converts `.` to `__`, `-` to `___`).
 /// Example: `rubygems.org` -> `GEM_HOST_API_KEY_RUBYGEMS_ORG`
+#[must_use]
 pub fn gem_host_api_key(host: &str) -> Option<String> {
     let env_host = host.replace('-', "___").replace('.', "__").to_uppercase();
     env::var(format!("GEM_HOST_API_KEY_{env_host}")).ok()
@@ -99,16 +110,19 @@ pub fn gem_host_api_key(host: &str) -> Option<String> {
 // List variables support colon or space-separated values
 
 /// Get number of parallel jobs (returns None if not set).
+#[must_use]
 pub fn bundle_jobs() -> Option<usize> {
     env::var("BUNDLE_JOBS").ok().and_then(|s| s.parse().ok())
 }
 
 /// Get number of network retry attempts (returns None if not set).
+#[must_use]
 pub fn bundle_retry() -> Option<u32> {
     env::var("BUNDLE_RETRY").ok().and_then(|s| s.parse().ok())
 }
 
 /// Get groups to exclude (colon/space-separated list).
+#[must_use]
 pub fn bundle_without() -> Option<Vec<String>> {
     env::var("BUNDLE_WITHOUT").ok().map(|s| {
         s.split([':', ' '])
@@ -119,6 +133,7 @@ pub fn bundle_without() -> Option<Vec<String>> {
 }
 
 /// Get groups to include (colon/space-separated list).
+#[must_use]
 pub fn bundle_with() -> Option<Vec<String>> {
     env::var("BUNDLE_WITH").ok().map(|s| {
         s.split([':', ' '])
@@ -129,6 +144,7 @@ pub fn bundle_with() -> Option<Vec<String>> {
 }
 
 /// Check if frozen mode is enabled.
+#[must_use]
 pub fn bundle_frozen() -> bool {
     env::var("BUNDLE_FROZEN").ok().is_some_and(|s| {
         let s = s.to_lowercase();
@@ -137,6 +153,7 @@ pub fn bundle_frozen() -> bool {
 }
 
 /// Check if deployment mode is enabled.
+#[must_use]
 pub fn bundle_deployment() -> bool {
     env::var("BUNDLE_DEPLOYMENT").ok().is_some_and(|s| {
         let s = s.to_lowercase();
@@ -147,31 +164,37 @@ pub fn bundle_deployment() -> bool {
 // Path configuration - BUNDLE_GEMFILE, BUNDLE_PATH, BUNDLE_APP_CONFIG, etc.
 
 /// Get Gemfile path (typically Gemfile or gems.rb).
+#[must_use]
 pub fn bundle_gemfile() -> Option<String> {
     env::var("BUNDLE_GEMFILE").ok()
 }
 
 /// Get bundle installation path (e.g., vendor/bundle).
+#[must_use]
 pub fn bundle_path() -> Option<String> {
     env::var("BUNDLE_PATH").ok()
 }
 
 /// Get bundle config directory (typically .bundle).
+#[must_use]
 pub fn bundle_app_config() -> Option<String> {
     env::var("BUNDLE_APP_CONFIG").ok()
 }
 
 /// Get bundler home directory.
+#[must_use]
 pub fn bundle_user_home() -> Option<String> {
     env::var("BUNDLE_USER_HOME").ok()
 }
 
 /// Get bundler cache directory.
+#[must_use]
 pub fn bundle_user_cache() -> Option<String> {
     env::var("BUNDLE_USER_CACHE").ok()
 }
 
 /// Get binstubs directory.
+#[must_use]
 pub fn bundle_bin() -> Option<String> {
     env::var("BUNDLE_BIN").ok()
 }
@@ -179,16 +202,19 @@ pub fn bundle_bin() -> Option<String> {
 // SSL configuration - BUNDLE_SSL_CA_CERT, BUNDLE_SSL_CLIENT_CERT, BUNDLE_SSL_VERIFY_MODE
 
 /// Get SSL CA certificate path.
+#[must_use]
 pub fn bundle_ssl_ca_cert() -> Option<String> {
     env::var("BUNDLE_SSL_CA_CERT").ok()
 }
 
 /// Get SSL client certificate path.
+#[must_use]
 pub fn bundle_ssl_client_cert() -> Option<String> {
     env::var("BUNDLE_SSL_CLIENT_CERT").ok()
 }
 
 /// Get SSL verification mode ("peer" or "none").
+#[must_use]
 pub fn bundle_ssl_verify_mode() -> Option<String> {
     env::var("BUNDLE_SSL_VERIFY_MODE").ok()
 }
@@ -196,36 +222,43 @@ pub fn bundle_ssl_verify_mode() -> Option<String> {
 // Additional CLI flag equivalents
 
 /// Get cache path.
+#[must_use]
 pub fn bundle_cache_path() -> Option<String> {
     env::var("BUNDLE_CACHE_PATH").ok()
 }
 
 /// Check if clean mode is enabled.
+#[must_use]
 pub fn bundle_clean() -> bool {
     is_enabled("BUNDLE_CLEAN")
 }
 
 /// Check if no-prune mode is enabled.
+#[must_use]
 pub fn bundle_no_prune() -> bool {
     is_enabled("BUNDLE_NO_PRUNE")
 }
 
 /// Check if local mode is enabled.
+#[must_use]
 pub fn bundle_local() -> bool {
     is_enabled("BUNDLE_LOCAL")
 }
 
 /// Check if prefer-local mode is enabled.
+#[must_use]
 pub fn bundle_prefer_local() -> bool {
     is_enabled("BUNDLE_PREFER_LOCAL")
 }
 
 /// Check if force mode is enabled.
+#[must_use]
 pub fn bundle_force() -> bool {
     is_enabled("BUNDLE_FORCE")
 }
 
 /// Check if cache-all-platforms mode is enabled.
+#[must_use]
 pub fn bundle_cache_all_platforms() -> bool {
     is_enabled("BUNDLE_CACHE_ALL_PLATFORMS")
 }
@@ -233,21 +266,25 @@ pub fn bundle_cache_all_platforms() -> bool {
 // Behavioral toggles
 
 /// Check if root warning should be silenced.
+#[must_use]
 pub fn bundle_silence_root_warning() -> bool {
     is_enabled("BUNDLE_SILENCE_ROOT_WARNING")
 }
 
 /// Check if version check should be disabled.
+#[must_use]
 pub fn bundle_disable_version_check() -> bool {
     is_enabled("BUNDLE_DISABLE_VERSION_CHECK")
 }
 
 /// Check if ruby platform should be forced.
+#[must_use]
 pub fn bundle_force_ruby_platform() -> bool {
     is_enabled("BUNDLE_FORCE_RUBY_PLATFORM")
 }
 
 /// Check if verbose mode is enabled.
+#[must_use]
 pub fn bundle_verbose() -> bool {
     is_enabled("BUNDLE_VERBOSE")
 }
@@ -255,6 +292,7 @@ pub fn bundle_verbose() -> bool {
 // Advanced features
 
 /// Get exclusive groups to install (colon/space-separated list).
+#[must_use]
 pub fn bundle_only() -> Option<Vec<String>> {
     env::var("BUNDLE_ONLY").ok().map(|s| {
         s.split([':', ' '])
@@ -265,41 +303,49 @@ pub fn bundle_only() -> Option<Vec<String>> {
 }
 
 /// Check if shared gems should be disabled (use only bundled gems).
+#[must_use]
 pub fn bundle_disable_shared_gems() -> bool {
     is_enabled("BUNDLE_DISABLE_SHARED_GEMS")
 }
 
 /// Get custom HTTP user agent.
+#[must_use]
 pub fn bundle_user_agent() -> Option<String> {
     env::var("BUNDLE_USER_AGENT").ok()
 }
 
 /// Get custom shebang for binstubs.
+#[must_use]
 pub fn bundle_shebang() -> Option<String> {
     env::var("BUNDLE_SHEBANG").ok()
 }
 
 /// Check if cache-all mode is enabled (cache git/path sources).
+#[must_use]
 pub fn bundle_cache_all() -> bool {
     is_enabled("BUNDLE_CACHE_ALL")
 }
 
 /// Check if no-install mode is enabled (skip installation after caching).
+#[must_use]
 pub fn bundle_no_install() -> bool {
     is_enabled("BUNDLE_NO_INSTALL")
 }
 
 /// Check if prefer-patch mode is enabled (prefer patch-level updates).
+#[must_use]
 pub fn bundle_prefer_patch() -> bool {
     is_enabled("BUNDLE_PREFER_PATCH")
 }
 
 /// Check if checksum validation should be disabled.
+#[must_use]
 pub fn bundle_disable_checksum_validation() -> bool {
     is_enabled("BUNDLE_DISABLE_CHECKSUM_VALIDATION")
 }
 
 /// Get maximum number of HTTP redirects (defaults to 5).
+#[must_use]
 pub fn bundle_redirect() -> usize {
     env::var("BUNDLE_REDIRECT")
         .ok()
@@ -311,31 +357,37 @@ pub fn bundle_redirect() -> usize {
 // MAKE, CC, CXX, CFLAGS, CXXFLAGS, LDFLAGS
 
 /// Get make command (override default for C extensions).
+#[must_use]
 pub fn make_command() -> Option<String> {
     env::var("MAKE").ok()
 }
 
 /// Get C compiler (useful for cross-compilation).
+#[must_use]
 pub fn cc() -> Option<String> {
     env::var("CC").ok()
 }
 
 /// Get C++ compiler (useful for cross-compilation).
+#[must_use]
 pub fn cxx() -> Option<String> {
     env::var("CXX").ok()
 }
 
 /// Get C compiler flags.
+#[must_use]
 pub fn cflags() -> Option<String> {
     env::var("CFLAGS").ok()
 }
 
 /// Get C++ compiler flags.
+#[must_use]
 pub fn cxxflags() -> Option<String> {
     env::var("CXXFLAGS").ok()
 }
 
 /// Get linker flags.
+#[must_use]
 pub fn ldflags() -> Option<String> {
     env::var("LDFLAGS").ok()
 }
@@ -343,6 +395,7 @@ pub fn ldflags() -> Option<String> {
 // Gem installation filtering
 
 /// Get gems to skip (space-separated patterns, e.g., "rdoc ri" or "test-* *-dev").
+#[must_use]
 pub fn gem_skip() -> Option<Vec<String>> {
     env::var("GEM_SKIP").ok().map(|s| {
         s.split_whitespace()
@@ -415,46 +468,55 @@ pub fn should_skip_gem(gem_name: &str, patterns: &[impl AsRef<str>]) -> bool {
 // Configuration and debugging options
 
 /// Check if config files should be ignored (ignore .bundle/config and .bundlerc).
+#[must_use]
 pub fn bundle_ignore_config() -> bool {
     is_enabled("BUNDLE_IGNORE_CONFIG")
 }
 
 /// Check if offline installation is allowed (install even if gems unavailable).
+#[must_use]
 pub fn bundle_allow_offline_install() -> bool {
     is_enabled("BUNDLE_ALLOW_OFFLINE_INSTALL")
 }
 
 /// Check if auto-install is enabled (automatically install missing gems).
+#[must_use]
 pub fn bundle_auto_install() -> bool {
     is_enabled("BUNDLE_AUTO_INSTALL")
 }
 
 /// Check if deprecation warnings should be silenced (useful for CI).
+#[must_use]
 pub fn bundle_silence_deprecations() -> bool {
     is_enabled("BUNDLE_SILENCE_DEPRECATIONS")
 }
 
 /// Check if funding requests should be ignored.
+#[must_use]
 pub fn bundle_ignore_funding_requests() -> bool {
     is_enabled("BUNDLE_IGNORE_FUNDING_REQUESTS")
 }
 
 /// Check if post-install messages should be ignored.
+#[must_use]
 pub fn bundle_ignore_messages() -> bool {
     is_enabled("BUNDLE_IGNORE_MESSAGES")
 }
 
 /// Check if lockfile checksums are enabled (adds SHA256 checksums).
+#[must_use]
 pub fn bundle_lockfile_checksums() -> bool {
     is_enabled("BUNDLE_LOCKFILE_CHECKSUMS")
 }
 
 /// Check if global gem cache is enabled (share cache across projects).
+#[must_use]
 pub fn bundle_global_gem_cache() -> bool {
     is_enabled("BUNDLE_GLOBAL_GEM_CACHE")
 }
 
 /// Check if system-wide gem installation is enabled (install to system Ruby directory).
+#[must_use]
 pub fn bundle_system() -> bool {
     is_enabled("BUNDLE_SYSTEM")
 }

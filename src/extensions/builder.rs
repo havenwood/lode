@@ -309,6 +309,7 @@ impl ExtensionBuilder {
 ///     }
 /// }
 /// ```
+#[must_use]
 pub fn build_extensions(
     gems: &[(&str, &Path, Option<&str>)],
     skip_extensions: bool,

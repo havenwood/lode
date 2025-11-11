@@ -61,6 +61,10 @@ impl GemfileWriter {
     /// writer.write()?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem insertion fails.
     pub fn add_gem(
         &mut self,
         name: &str,
@@ -103,6 +107,10 @@ impl GemfileWriter {
     /// }
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem removal validation fails.
     pub fn remove_gem(&mut self, name: &str) -> Result<bool> {
         let mut removed = false;
         let gem_pattern = Self::gem_pattern(name);

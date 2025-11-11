@@ -47,6 +47,7 @@ pub struct StandaloneGem {
 
 impl StandaloneGem {
     /// Returns the full gem name with version (e.g., "rack-3.0.8")
+    #[must_use]
     pub fn full_name(&self) -> String {
         if let Some(ref platform) = self.platform
             && platform != "ruby"
@@ -102,6 +103,10 @@ impl StandaloneBundle {
     /// let bundle = StandaloneBundle::new(options, "3.3.0", "ruby")?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if bundle initialization fails.
     pub fn new(options: StandaloneOptions, ruby_version: &str, ruby_engine: &str) -> Result<Self> {
         let root = options.bundle_path;
         let platform = crate::platform::detect_current_platform();
@@ -136,6 +141,10 @@ impl StandaloneBundle {
     /// bundle.create_directories()?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if directory creation fails.
     pub fn create_directories(&self) -> Result<()> {
         fs::create_dir_all(&self.root)
             .with_context(|| format!("Failed to create bundle root: {}", self.root.display()))?;
@@ -211,6 +220,10 @@ impl StandaloneBundle {
     /// bundle.install_gem(&gem)?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if gem installation fails.
     pub fn install_gem(&self, gem: &StandaloneGem) -> Result<()> {
         let gem_name = gem.full_name();
 
@@ -263,6 +276,10 @@ impl StandaloneBundle {
     /// bundle.generate_setup_rb(&gems)?;
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if setup.rb generation fails.
     pub fn generate_setup_rb(&self, gems: &[StandaloneGem]) -> Result<()> {
         use std::fmt::Write;
 

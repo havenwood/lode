@@ -44,6 +44,10 @@ impl BinstubGenerator {
     ///
     /// # Returns
     /// Number of binstubs created
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if binstub generation fails.
     pub fn generate(&self, gem_name: &str, gem_dir: &Path) -> Result<usize> {
         // Find executables in gem
         let executables = Self::find_executables(gem_dir)?;
@@ -234,6 +238,10 @@ load Gem.bin_path('{gem_name}', '{exe_name}')
 /// let count = generate_binstubs(&gems, bin_dir, gemfile).unwrap();
 /// println!("Generated {} binstubs", count);
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if binstub generation fails.
 pub fn generate_binstubs(
     gems: &[(&str, &Path)],
     bin_dir: &Path,

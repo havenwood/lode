@@ -38,6 +38,10 @@ impl CExtensionBuilder {
     /// 1. RUBY environment variable
     /// 2. `ruby` in PATH
     /// 3. Error if not found
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Ruby executable cannot be found.
     pub fn new(verbose: bool) -> Result<Self> {
         let ruby_path = Self::find_ruby_executable()
             .context("Ruby executable not found. C extensions require Ruby to be installed.")?;
@@ -79,6 +83,7 @@ impl CExtensionBuilder {
     /// # Returns
     /// `BuildResult` with build status, duration, and output
     #[must_use]
+    #[allow(clippy::too_many_lines)]
     pub fn build(
         &self,
         gem_name: &str,
@@ -308,6 +313,10 @@ impl CExtensionBuilder {
     ///
     /// Runs `ruby -v` to get version information. Useful for verifying Ruby
     /// compatibility.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Ruby version command fails.
     pub fn ruby_version(&self) -> Result<String> {
         let output = Command::new(&self.ruby_path)
             .arg("-v")

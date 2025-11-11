@@ -39,6 +39,10 @@ impl CMakeExtensionBuilder {
     /// 1. `CMAKE` environment variable
     /// 2. `cmake` in `PATH`
     /// 3. Error if not found
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `CMake` executable cannot be found.
     pub fn new(verbose: bool) -> Result<Self> {
         let cmake_path = Self::find_cmake_executable().context(
             "CMake executable not found. CMake extensions require CMake to be installed.",
@@ -78,6 +82,10 @@ impl CMakeExtensionBuilder {
     ///
     /// # Returns
     /// Result with build status and output
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `CMake` build fails.
     pub fn build(&self, gem_name: &str, ext_dir: &Path, gem_dir: &Path) -> Result<BuildResult> {
         let start_time = Instant::now();
         let mut output_buffer = Vec::new();
