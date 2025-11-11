@@ -14,10 +14,7 @@ use lode::GemfileWriter;
 ///
 /// ```bash
 /// lode remove minitest
-/// lode remove rspec webmock  # Remove multiple gems
-/// lode remove rails --skip-lock   # Don't run lock
-/// lode remove webmock --skip-clean  # Don't run clean
-/// lode remove rails --install  # Run install after removing
+/// lode remove rspec webmock
 /// ```
 pub(crate) async fn run(gem_names: &[String], quiet: bool) -> Result<()> {
     if gem_names.is_empty() {

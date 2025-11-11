@@ -19,7 +19,7 @@ fn add_gem_with_version() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "rspec", "--version", "~> 3.12", "--skip-lock"])
+        .args(["add", "rspec", "--version", "~> 3.12", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
@@ -49,7 +49,7 @@ fn add_gem_to_group() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "rspec", "--group", "test", "--skip-lock"])
+        .args(["add", "rspec", "--group", "test", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
@@ -80,7 +80,7 @@ fn add_gem_with_source() {
             "custom-gem",
             "--source",
             "https://custom.gems.io",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -108,7 +108,7 @@ fn add_gem_strict() {
             "--version",
             "13.0.6",
             "--strict",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -141,7 +141,7 @@ fn add_gem_optimistic() {
             "--version",
             "3.12",
             "--optimistic",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -173,7 +173,7 @@ fn add_gem_with_path() {
             "local-gem",
             "--path",
             "./vendor/gems/local-gem",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -205,7 +205,7 @@ fn add_gem_with_git() {
             "custom-gem",
             "--git",
             "https://github.com/user/custom-gem.git",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -237,7 +237,7 @@ fn add_gem_with_github() {
             "custom-gem",
             "--github",
             "user/custom-gem",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -271,7 +271,7 @@ fn add_gem_with_branch() {
             "https://github.com/user/custom-gem.git",
             "--branch",
             "main",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -305,7 +305,7 @@ fn add_gem_with_ref() {
             "https://github.com/user/custom-gem.git",
             "--ref",
             "abc1234",
-            "--skip-lock",
+            "--skip-install",
         ])
         .output()
         .expect("Failed to execute lode add");
@@ -332,7 +332,7 @@ fn add_gem_require_false() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "some-gem", "--require", "false", "--skip-lock"])
+        .args(["add", "some-gem", "--require", "false", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
@@ -358,7 +358,7 @@ fn add_gem_quiet() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "rspec", "--quiet", "--skip-lock"])
+        .args(["add", "rspec", "--quiet", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
@@ -384,13 +384,13 @@ fn add_gem_skip_lock() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "rspec", "--skip-lock"])
+        .args(["add", "rspec", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
     assert!(
         output.status.success(),
-        "lode add --skip-lock should succeed. stderr: {}",
+        "lode add --skip-install should succeed. stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
@@ -433,7 +433,7 @@ fn add_gem_preserves_content() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "rspec", "--version", "~> 3.12", "--skip-lock"])
+        .args(["add", "rspec", "--version", "~> 3.12", "--skip-install"])
         .output()
         .expect("Failed to execute lode add");
 
@@ -496,7 +496,7 @@ fn add_multiple_gems() {
     // Add first gem
     let output1 = Command::new(&lode_binary)
         .current_dir(temp.path())
-        .args(["add", "rspec", "--version", "~> 3.12", "--skip-lock"])
+        .args(["add", "rspec", "--version", "~> 3.12", "--skip-install"])
         .output()
         .expect("Failed to execute lode add for rspec");
 
@@ -509,7 +509,7 @@ fn add_multiple_gems() {
     // Add second gem
     let output2 = Command::new(&lode_binary)
         .current_dir(temp.path())
-        .args(["add", "rake", "--version", "13.0.6", "--skip-lock"])
+        .args(["add", "rake", "--version", "13.0.6", "--skip-install"])
         .output()
         .expect("Failed to execute lode add for rake");
 
@@ -535,7 +535,13 @@ fn add_gem_complex_version() {
 
     let output = Command::new(get_lode_binary())
         .current_dir(temp.path())
-        .args(["add", "devise", "--version", ">= 4.0, < 5.0", "--skip-lock"])
+        .args([
+            "add",
+            "devise",
+            "--version",
+            ">= 4.0, < 5.0",
+            "--skip-install",
+        ])
         .output()
         .expect("Failed to execute lode add");
 

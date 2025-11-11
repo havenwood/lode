@@ -16,7 +16,7 @@ use std::fmt::Write;
 /// ```bash
 /// lode add rails --version "~> 7.0"
 /// lode add rspec --group test
-/// lode add bootsnap --skip-lock  # Don't run lock
+/// lode add bootsnap --skip-install
 /// ```
 #[allow(
     clippy::too_many_arguments,
