@@ -38,7 +38,7 @@ pub mod user;
 
 // Re-export common types for convenience
 pub use cache::{Stats as CacheDirStats, collect_stats, human_bytes};
-pub use config::Config;
+pub use config::{BundleConfig, Config};
 pub use debug::{debug_log, debug_logf, init_debug, is_debug_enabled};
 pub use download::DownloadManager;
 pub use extensions::{
